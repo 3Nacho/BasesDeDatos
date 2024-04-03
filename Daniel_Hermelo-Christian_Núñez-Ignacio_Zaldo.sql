@@ -57,7 +57,8 @@ create table reservas(
 create or replace procedure reservar_evento( arg_NIF_cliente varchar,
  arg_nombre_evento varchar, arg_fecha date) is
  begin
-  null;
+  INSERT INTO reservas VALUES (seq_reservas.nextval, arg_NIF_cliente, seq_evento.nextval, seq_abonos.nextval, arg_fecha);
+   UPDATE eventos SET asientos_disponibles=asientos_disponibles-1 WHERE nombre_evento=evento;
 end;
 /
 
