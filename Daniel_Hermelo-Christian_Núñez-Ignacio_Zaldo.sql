@@ -43,6 +43,7 @@ create table eventos(
 
 create sequence seq_reservas;
 
+-- Tabla de reservas
 create table reservas(
 	id_reserva	integer primary key,
 	cliente  	varchar(9) references clientes,
