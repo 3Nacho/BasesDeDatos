@@ -66,13 +66,32 @@ pragma exception_init(saldo_insuficiente, -20004);
  
 begin
     INSERT INTO reservas VALUES (seq_reservas.nextval, arg_NIF_cliente, seq_evento.nextval, seq_abonos.nextval, arg_fecha);
-    UPDATE eventos SET asientos_disponibles=asientos_disponibles-1 WHERE nombre_evento=evento;
+    UPDATE eventos SET asientos_disponibles=asientos_disponibles-1 WHERE arg_nombre_evento=evento;
     UPDATE abonos SET saldo=saldo-1 WHERE cliente=arg_NIF_cliente;
    
-    SELECT asientos_disponibles INTO libres FROM eventos WHERE nombre_evento = evento;
-    if libres = -1 then
+    SELECT asientos_disponibles INTO libres FROM eventos WHERE arg_nombre_evento = evento;
+    if trunc(arg_fecha) < trunc(CURRENT_DATE) then
         rollback;
-        raise_application_error(-20001,'No quedan plazas libres en el grupo '||arg_grupo||' de la asignatura '||arg_asig||'.');
+        raise_application_error(-20001,'No se pueden reservar eventos pasados.');
+    else 
+        SELECT count(*) into eventos_existentes from eventos where arg_nombre_evento = evento; --existe
+        SELECT count(*) into clientes_existentes from clientes where arg_NIF_cliente = NIF; --existe cliente
+        SELECT asientos_disponibles INTO libres from eventos WHERE arg_nombre_evento = evento; --libres
+        SELECT saldo INTO dinero from abonos WHERE arg_NIF_cliente = cliente; --saldo
+        if eventos_existentes < 1 then
+            rollback;
+        elsif clientes_existentes < 1 then
+            rollback;
+            raise_application_error(-20002,'Cliente inexistente.');
+        elsif eventos_existentes < 1 then
+            rollback;
+            raise_application_error(-20003,'El evento ' ||arg_nombre_evento|| 'no existe.');
+        elsif saldo < 1 then
+            rollback;
+            raise_application_error(-20004,'Saldo en abono insuficiente.');
+        else
+            commit;
+        end if;
     end if;
 end;
 /
@@ -212,8 +231,6 @@ EXCEPTION
     dbms_output.put_line('Error inesperado: ' || SQLERRM);
 END;
 /
-
-
 
 set serveroutput on;
 exec test_reserva_evento;
