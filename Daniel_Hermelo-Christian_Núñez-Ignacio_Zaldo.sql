@@ -51,15 +51,29 @@ create table reservas(
 	abono       integer references abonos,
 	fecha	date not null
 );
-
-
 	
 -- Procedimiento a implementar para realizar la reserva
-create or replace procedure reservar_evento( arg_NIF_cliente varchar,
- arg_nombre_evento varchar, arg_fecha date) is
- begin
-  INSERT INTO reservas VALUES (seq_reservas.nextval, arg_NIF_cliente, seq_evento.nextval, seq_abonos.nextval, arg_fecha);
-   UPDATE eventos SET asientos_disponibles=asientos_disponibles-1 WHERE nombre_evento=evento;
+create or replace procedure reservar_evento( arg_NIF_cliente varchar, arg_nombre_evento varchar, arg_fecha date) is
+
+evento_sin_suceder exception;
+pragma exception_init(evento_sin_suceder, -20001);
+cliente_inexistente exception;
+pragma exception_init(cliente_inexistente, -20002);
+evento_inexistente exception;
+pragma exception_init(evento_inexistente, -20003);
+saldo_insuficiente exception;
+pragma exception_init(saldo_insuficiente, -20004);
+ 
+begin
+    INSERT INTO reservas VALUES (seq_reservas.nextval, arg_NIF_cliente, seq_evento.nextval, seq_abonos.nextval, arg_fecha);
+    UPDATE eventos SET asientos_disponibles=asientos_disponibles-1 WHERE nombre_evento=evento;
+    UPDATE abonos SET saldo=saldo-1 WHERE cliente=arg_NIF_cliente;
+   
+    SELECT asientos_disponibles INTO libres FROM eventos WHERE nombre_evento = evento;
+    if libres = -1 then
+        rollback;
+        raise_application_error(-20001,'No quedan plazas libres en el grupo '||arg_grupo||' de la asignatura '||arg_asig||'.');
+    end if;
 end;
 /
 
@@ -111,9 +125,7 @@ begin
     delete from eventos;
     delete from abonos;
     delete from clientes;
-    
-       
-		
+    	
     insert into clientes values ('12345678A', 'Pepe', 'Perez', 'Porras');
     insert into clientes values ('11111111B', 'Beatriz', 'Barbosa', 'Bernardez');
     
