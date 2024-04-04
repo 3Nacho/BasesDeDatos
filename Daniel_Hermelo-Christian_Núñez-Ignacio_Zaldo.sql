@@ -78,6 +78,27 @@ end;
 /
 
 
+-- Tabla para comprobar que el evento no ha pasado. (Caso contrario devolverá el error -20001 con el mensaje 'No se pueden reservar eventos pasados.')
+CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_evento VARCHAR, arg_fecha DATE) IS
+  v_fecha_evento DATE;
+BEGIN
+  -- Para obtener la fecha del evento basado en arg_nombre_evento
+  SELECT fecha INTO v_fecha_evento FROM eventos WHERE nombre_evento = arg_nombre_evento;
+  
+  -- Para comprobar si la fecha del evento ya pasó comparándola con la fecha actual del sistema
+  IF v_fecha_evento < SYSDATE THEN
+    -- Para lanzar un error si el evento ya pasó
+    RAISE_APPLICATION_ERROR(-20001, 'No se pueden reservar eventos pasados.');
+  ELSE
+    -- Para proceder con la lógica de reserva si el evento no ha pasado
+    INSERT INTO reservas VALUES (seq_reservas.nextval, arg_NIF_cliente, (SELECT id_evento FROM eventos WHERE nombre_evento = arg_nombre_evento), seq_abonos.nextval, arg_fecha);
+    -- Para actualizar los asientos disponibles en la tabla de eventos
+    UPDATE eventos SET asientos_disponibles = asientos_disponibles - 1 WHERE nombre_evento = arg_nombre_evento;
+  END IF;
+
+  COMMIT;
+END;
+/
 
 
 ------ Deja aquí tus respuestas a las preguntas del enunciado:
@@ -177,8 +198,24 @@ begin
 end;
 /
 
+CREATE OR REPLACE PROCEDURE test_reserva_evento_pasado IS
+  v_error_expected EXCEPTION;
+  PRAGMA EXCEPTION_INIT(v_error_expected, -20001);
+BEGIN
+  -- Intenta reservar un evento con fecha pasada
+  -- Asumiendo que "concierto_la_moda" es el nombre de un evento y la fecha es anterior a la fecha actual
+  reservar_evento('12345678A', 'concierto_la_moda', TO_DATE('2023-01-01', 'YYYY-MM-DD'));
+EXCEPTION
+  WHEN v_error_expected THEN
+    dbms_output.put_line('Prueba exitosa: No se pueden reservar eventos pasados.');
+  WHEN OTHERS THEN
+    dbms_output.put_line('Error inesperado: ' || SQLERRM);
+END;
+/
 
 
 
 set serveroutput on;
 exec test_reserva_evento;
+SET SERVEROUTPUT ON;
+EXEC test_reserva_evento_pasado;
