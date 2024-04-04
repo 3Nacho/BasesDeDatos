@@ -63,6 +63,9 @@ create or replace procedure reservar_evento( arg_NIF_cliente varchar,
 end;
 /
 
+
+
+
 ------ Deja aquí tus respuestas a las preguntas del enunciado:
 -- * P4.1
 --
@@ -161,6 +164,8 @@ begin
   
 end;
 /
+
+
 
 
 set serveroutput on;
