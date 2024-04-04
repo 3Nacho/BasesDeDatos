@@ -55,49 +55,29 @@ create table reservas(
 -- Procedimiento a implementar para realizar la reserva
 create or replace procedure reservar_evento( arg_NIF_cliente varchar, arg_nombre_evento varchar, arg_fecha date) is
 
-evento_sin_suceder exception;
-pragma exception_init(evento_sin_suceder, -20001);
-cliente_inexistente exception;
-pragma exception_init(cliente_inexistente, -20002);
-evento_inexistente exception;
-pragma exception_init(evento_inexistente, -20003);
-saldo_insuficiente exception;
-pragma exception_init(saldo_insuficiente, -20004);
- 
+    evento_pasado exception;
+    pragma exception_init(evento_pasado, -20001);
+    cliente_inexistente exception;
+    pragma exception_init(cliente_inexistente, -20002);
+    evento_inexistente exception;
+    pragma exception_init(evento_inexistente, -20003);
+    saldo_insuficiente exception;
+    pragma exception_init(saldo_insuficiente, -20004);
+    
+    v_asientos_disponibles integer;
+
 begin
-    INSERT INTO reservas VALUES (seq_reservas.nextval, arg_NIF_cliente, seq_evento.nextval, seq_abonos.nextval, arg_fecha);
-    UPDATE eventos SET asientos_disponibles=asientos_disponibles-1 WHERE nombre_evento=evento;
-    UPDATE abonos SET saldo=saldo-1 WHERE cliente=arg_NIF_cliente;
-   
-    SELECT asientos_disponibles INTO libres FROM eventos WHERE nombre_evento = evento;
-    if libres = -1 then
-        rollback;
-        raise_application_error(-20001,'No quedan plazas libres en el grupo '||arg_grupo||' de la asignatura '||arg_asig||'.');
+    -- Verificar si la fecha del evento es anterior a la fecha actual
+    if trunc(arg_fecha) < trunc(CURRENT_DATE) then
+        raise_application_error(-20001, 'No se pueden reservar eventos pasados.');
     end if;
+
+    -- Resto de la lógica para realizar la reserva
+    INSERT INTO reservas VALUES (seq_reservas.nextval, arg_NIF_cliente, seq_evento.nextval, seq_abonos.nextval, arg_fecha);
+    UPDATE eventos SET asientos_disponibles=asientos_disponibles-1 WHERE nombre_evento=arg_nombre_evento;
+    UPDATE abonos SET saldo=saldo-1 WHERE cliente=arg_NIF_cliente;
+
 end;
-/
-
-
--- Tabla para comprobar que el evento no ha pasado. (Caso contrario devolverá el error -20001 con el mensaje 'No se pueden reservar eventos pasados.')
-CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_evento VARCHAR, arg_fecha DATE) IS
-  v_fecha_evento DATE;
-BEGIN
-  -- Para obtener la fecha del evento basado en arg_nombre_evento
-  SELECT fecha INTO v_fecha_evento FROM eventos WHERE nombre_evento = arg_nombre_evento;
-  
-  -- Para comprobar si la fecha del evento ya pasó comparándola con la fecha actual del sistema
-  IF v_fecha_evento < SYSDATE THEN
-    -- Para lanzar un error si el evento ya pasó
-    RAISE_APPLICATION_ERROR(-20001, 'No se pueden reservar eventos pasados.');
-  ELSE
-    -- Para proceder con la lógica de reserva si el evento no ha pasado
-    INSERT INTO reservas VALUES (seq_reservas.nextval, arg_NIF_cliente, (SELECT id_evento FROM eventos WHERE nombre_evento = arg_nombre_evento), seq_abonos.nextval, arg_fecha);
-    -- Para actualizar los asientos disponibles en la tabla de eventos
-    UPDATE eventos SET asientos_disponibles = asientos_disponibles - 1 WHERE nombre_evento = arg_nombre_evento;
-  END IF;
-
-  COMMIT;
-END;
 /
 
 
@@ -194,7 +174,6 @@ begin
     inicializa_test;
   end;
 
-  
 end;
 /
 
@@ -212,8 +191,6 @@ EXCEPTION
     dbms_output.put_line('Error inesperado: ' || SQLERRM);
 END;
 /
-
-
 
 set serveroutput on;
 exec test_reserva_evento;
