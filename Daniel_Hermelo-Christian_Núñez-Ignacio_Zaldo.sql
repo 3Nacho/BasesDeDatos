@@ -217,5 +217,3 @@ END;
 
 set serveroutput on;
 exec test_reserva_evento;
-SET SERVEROUTPUT ON;
-EXEC test_reserva_evento_pasado;
