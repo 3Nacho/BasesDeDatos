@@ -169,6 +169,19 @@ exec inicializa_test;
 
 create or replace procedure test_reserva_evento is
 begin
+   
+  -- Excepciones esperadas
+  v_evento_pasado EXCEPTION;
+  PRAGMA EXCEPTION_INIT(evento_pasado, -20001);
+
+  v_cliente_inexistente EXCEPTION;
+  PRAGMA EXCEPTION_INIT(cliente_inexistente, -20002);
+
+  v_evento_inexistente EXCEPTION;
+  PRAGMA EXCEPTION_INIT(evento_inexistente, -20003);
+
+  v_saldo_insuficiente EXCEPTION;
+  PRAGMA EXCEPTION_INIT(saldo_insuficiente, -20004); 
 	 
   --caso 1 Reserva correcta, se realiza
   begin
@@ -203,18 +216,7 @@ end;
 CREATE OR REPLACE PROCEDURE test_reserva_evento_pasado IS
   v_error_expected EXCEPTION;
   
-  -- Excepciones esperadas
-  v_evento_pasado EXCEPTION;
-  PRAGMA EXCEPTION_INIT(evento_pasado, -20001);
-
-  v_cliente_inexistente EXCEPTION;
-  PRAGMA EXCEPTION_INIT(cliente_inexistente, -20002);
-
-  v_evento_inexistente EXCEPTION;
-  PRAGMA EXCEPTION_INIT(evento_inexistente, -20003);
-
-  v_saldo_insuficiente EXCEPTION;
-  PRAGMA EXCEPTION_INIT(saldo_insuficiente, -20004);
+  
   
 BEGIN
   -- Intenta reservar un evento con fecha pasada
