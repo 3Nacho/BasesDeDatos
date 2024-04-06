@@ -186,6 +186,31 @@ begin
   --caso 1 Reserva correcta, se realiza
   begin
     inicializa_test;
+    
+    -- Variables para contar la operación
+    cont_antes_de_la_reserva INTEGER;
+    cont_despues_de_la_reserva INTEGER;
+    
+    -- Conteo antes de la reserva
+    SELECT COUNT(*) INTO cont_antes_de_la_reserva FROM reservas;
+    
+    -- Hacemos una reserva valida
+    reservar_evento('12345678A', 'concierto_la_moda', TO_DATE('2024-06-27', 'YYYY-MM-DD'));
+    
+    -- Conteo después de la reserva
+    SELECT COUNT(*) INTO cont_despues_de_la_reserva FROM reservas;
+    
+    -- Verificamos si la prueba es exitosa
+    IF cont_despues_de_la_reserva = cont_antes_de_la_reserva + 1 THEN
+      dbms_output.put_line('T1: Prueba exitosa: La reserva se realizó correctamente.');
+    ELSE
+      dbms_output.put_line('T1: Prueba fallida: La cantidad de reservas no aumentó como se esperaba.');
+    END IF;
+    
+  EXCEPTION
+  WHEN OTHERS THEN
+    dbms_output.put_line('T1: Error inesperado: ' || SQLERRM);
+    
   end;
   
   
