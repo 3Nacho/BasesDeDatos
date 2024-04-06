@@ -194,7 +194,7 @@ begin
     inicializa_test;
     reservar_evento('12345678A', 'concierto_la_moda', TO_DATE('2023-01-01', 'YYYY-MM-DD'));
   EXCEPTION
-    WHEN v_evento_pasado THEN
+    WHEN evento_pasado THEN
       dbms_output.put_line('T2: Prueba exitosa: No se pueden reservar eventos pasados.');
     WHEN OTHERS THEN
       dbms_output.put_line('T2: Error inesperado: ' || SQLERRM);
