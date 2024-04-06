@@ -202,7 +202,20 @@ end;
 
 CREATE OR REPLACE PROCEDURE test_reserva_evento_pasado IS
   v_error_expected EXCEPTION;
-  PRAGMA EXCEPTION_INIT(v_error_expected, -20001);
+  
+  -- Excepciones esperadas
+  v_evento_pasado EXCEPTION;
+  PRAGMA EXCEPTION_INIT(evento_pasado, -20001);
+
+  v_cliente_inexistente EXCEPTION;
+  PRAGMA EXCEPTION_INIT(cliente_inexistente, -20002);
+
+  v_evento_inexistente EXCEPTION;
+  PRAGMA EXCEPTION_INIT(evento_inexistente, -20003);
+
+  v_saldo_insuficiente EXCEPTION;
+  PRAGMA EXCEPTION_INIT(saldo_insuficiente, -20004);
+  
 BEGIN
   -- Intenta reservar un evento con fecha pasada
   -- Asumiendo que "concierto_la_moda" es el nombre de un evento y la fecha es anterior a la fecha actual
