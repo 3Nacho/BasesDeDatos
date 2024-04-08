@@ -53,7 +53,7 @@ create table reservas(
 );
 	
 -- Procedimiento a implementar para realizar la reserva
-create or replace procedure reservar_evento( arg_NIF_cliente varchar, arg_nombre_evento varchar, arg_fecha date) is
+create or replace procedure reservar_evento(arg_NIF_cliente varchar, arg_nombre_evento varchar, arg_fecha date) is
 
     evento_pasado exception;
     pragma exception_init(evento_pasado, -20001);
@@ -65,7 +65,11 @@ create or replace procedure reservar_evento( arg_NIF_cliente varchar, arg_nombre
     pragma exception_init(saldo_insuficiente, -20004);
     
     v_asientos_disponibles integer;
-
+    libres integer;
+    eventos_existentes integer;
+    clientes_existentes integer;
+    dinero integer;
+    
 begin
     INSERT INTO reservas VALUES (seq_reservas.nextval, arg_NIF_cliente, seq_evento.nextval, seq_abonos.nextval, arg_fecha);
     UPDATE eventos SET asientos_disponibles=asientos_disponibles-1 WHERE arg_nombre_evento=evento;
@@ -88,14 +92,11 @@ begin
         elsif eventos_existentes < 1 then
             rollback;
             raise_application_error(-20003,'El evento ' ||arg_nombre_evento|| 'no existe.');
-        elsif saldo < 1 then
+        elsif dinero < 1 then
             rollback;
             raise_application_error(-20004,'Saldo en abono insuficiente.');
         else
 	    -- Resto de la lógica para realizar la reserva
-    	    INSERT INTO reservas VALUES (seq_reservas.nextval, arg_NIF_cliente, seq_evento.nextval, seq_abonos.nextval, arg_fecha);
-    	    UPDATE eventos SET asientos_disponibles=asientos_disponibles-1 WHERE nombre_evento=arg_nombre_evento;
-    	    UPDATE abonos SET saldo=saldo-1 WHERE cliente=arg_NIF_cliente;
             commit;
         end if;
     end if;
