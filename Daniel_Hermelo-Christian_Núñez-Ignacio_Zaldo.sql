@@ -166,31 +166,48 @@ end;
 
 exec inicializa_test;
 
--- Completa el test
 
-create or replace procedure test_reserva_evento is
+create or replace procedure inicializa_test is
 begin
-   
-  -- Excepciones esperadas
-  v_evento_pasado EXCEPTION;
-  PRAGMA EXCEPTION_INIT(evento_pasado, -20001);
+  reset_seq( 'seq_abonos' );
+  reset_seq( 'seq_eventos' );
+  reset_seq( 'seq_reservas' );
+        
+  
+    delete from reservas;
+    delete from eventos;
+    delete from abonos;
+    delete from clientes;
+    	
+    insert into clientes values ('12345678A', 'Pepe', 'Perez', 'Porras');
+    insert into clientes values ('11111111B', 'Beatriz', 'Barbosa', 'Bernardez');
+    
+    insert into abonos values (seq_abonos.nextval, '12345678A',10);
+    insert into abonos values (seq_abonos.nextval, '11111111B',0);
+    
+    insert into eventos values ( seq_eventos.nextval, 'concierto_la_moda', date '2024-6-27', 200);
+    insert into eventos values ( seq_eventos.nextval, 'teatro_impro', date '2024-7-1', 50);
 
-  v_cliente_inexistente EXCEPTION;
-  PRAGMA EXCEPTION_INIT(cliente_inexistente, -20002);
+    commit;
+end;
+/
 
-  v_evento_inexistente EXCEPTION;
-  PRAGMA EXCEPTION_INIT(evento_inexistente, -20003);
+exec inicializa_test;
 
-  v_saldo_insuficiente EXCEPTION;
-  PRAGMA EXCEPTION_INIT(saldo_insuficiente, -20004); 
-	 
+
+-- Completa el test 
+create or replace procedure test_reserva_evento is
+
+  -- Variables para contar la operación
+    cont_antes_de_la_reserva INTEGER;
+    cont_despues_de_la_reserva INTEGER;
+
+begin
+      
   --caso 1 Reserva correcta, se realiza
   begin
     inicializa_test;
     
-    -- Variables para contar la operación
-    cont_antes_de_la_reserva INTEGER;
-    cont_despues_de_la_reserva INTEGER;
     
     -- Conteo antes de la reserva
     SELECT COUNT(*) INTO cont_antes_de_la_reserva FROM reservas;
@@ -214,53 +231,61 @@ begin
     
   end;
   
-  
   --caso 2 Evento pasado
   begin
     inicializa_test;
     reservar_evento('12345678A', 'concierto_la_moda', TO_DATE('2023-01-01', 'YYYY-MM-DD'));
   EXCEPTION
-    WHEN evento_pasado THEN
-      dbms_output.put_line('T2: Prueba exitosa: No se pueden reservar eventos pasados.');
     WHEN OTHERS THEN
-      dbms_output.put_line('T2: Error inesperado: ' || SQLERRM);
+      IF SQLCODE = -20001 THEN
+        dbms_output.put_line('T2: Prueba exitosa: No se pueden reservar eventos pasados. SQL Error: ' || SQLCODE || ' ' || SQLERRM);
+      ELSE
+        dbms_output.put_line('T2: Error inesperado: ' || SQLERRM);
+      END IF;
   end;
   
   --caso 3 Evento inexistente
   begin
     inicializa_test;
+    reservar_evento('12345678A', 'evento_fantasma', TO_DATE('2024-06-28', 'YYYY-MM-DD'));
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF SQLCODE = -20003 THEN
+        dbms_output.put_line('T3: Prueba exitosa: El evento no existe. SQL Error: ' || SQLCODE || ' ' || SQLERRM);
+      ELSE
+        dbms_output.put_line('T3: Error inesperado: ' || SQLERRM);
+      END IF;
   end;
   
-
-  --caso 4 Cliente inexistente  
+  --caso 4 Cliente inexistente
   begin
     inicializa_test;
+    reservar_evento('99999999X', 'concierto_la_moda', TO_DATE('2024-06-27', 'YYYY-MM-DD'));
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF SQLCODE = -20002 THEN
+        dbms_output.put_line('T4: Prueba exitosa: Cliente inexistente. SQL Error: ' || SQLCODE || ' ' || SQLERRM);
+      ELSE
+        dbms_output.put_line('T4: Error inesperado: ' || SQLERRM);
+      END IF;
   end;
   
   --caso 5 El cliente no tiene saldo suficiente
   begin
     inicializa_test;
+    reservar_evento('11111111B', 'concierto_la_moda', TO_DATE('2024-06-27', 'YYYY-MM-DD'));
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF SQLCODE = -20004 THEN
+        dbms_output.put_line('T5: Prueba exitosa: Saldo insuficiente en abono. SQL Error: ' || SQLCODE || ' ' || SQLERRM);
+      ELSE
+        dbms_output.put_line('T5: Error inesperado: ' || SQLERRM);
+      END IF;
   end;
 
 end;
 /
 
-CREATE OR REPLACE PROCEDURE test_reserva_evento_pasado IS
-  v_error_expected EXCEPTION;
-  
-  
-  
-BEGIN
-  -- Intenta reservar un evento con fecha pasada
-  -- Asumiendo que "concierto_la_moda" es el nombre de un evento y la fecha es anterior a la fecha actual
-  reservar_evento('12345678A', 'concierto_la_moda', TO_DATE('2023-01-01', 'YYYY-MM-DD'));
-EXCEPTION
-  WHEN v_error_expected THEN
-    dbms_output.put_line('Prueba exitosa: No se pueden reservar eventos pasados.');
-  WHEN OTHERS THEN
-    dbms_output.put_line('Error inesperado: ' || SQLERRM);
-END;
-/
 
 set serveroutput on;
 exec test_reserva_evento;
