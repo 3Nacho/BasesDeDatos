@@ -52,57 +52,74 @@ create table reservas(
 	fecha	date not null
 );
 	
--- Procedimiento a implementar para realizar la reserva
-create or replace procedure reservar_evento(arg_NIF_cliente varchar, arg_nombre_evento varchar, arg_fecha date) is
 
-    evento_pasado exception;
-    pragma exception_init(evento_pasado, -20001);
-    cliente_inexistente exception;
-    pragma exception_init(cliente_inexistente, -20002);
-    evento_inexistente exception;
-    pragma exception_init(evento_inexistente, -20003);
-    saldo_insuficiente exception;
-    pragma exception_init(saldo_insuficiente, -20004);
+CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_evento VARCHAR, arg_fecha DATE) IS
+    evento_pasado EXCEPTION;
+    PRAGMA EXCEPTION_INIT(evento_pasado, -20001);
+    cliente_inexistente EXCEPTION;
+    PRAGMA EXCEPTION_INIT(cliente_inexistente, -20002);
+    evento_inexistente EXCEPTION;
+    PRAGMA EXCEPTION_INIT(evento_inexistente, -20003);
+    saldo_insuficiente EXCEPTION;
+    PRAGMA EXCEPTION_INIT(saldo_insuficiente, -20004);
     
-    v_asientos_disponibles integer;
-    libres integer;
-    eventos_existentes integer;
-    clientes_existentes integer;
-    dinero integer;
-    
-begin
-    INSERT INTO reservas VALUES (seq_reservas.nextval, arg_NIF_cliente, seq_eventos.nextval, seq_abonos.nextval, arg_fecha);
-    UPDATE eventos SET asientos_disponibles=asientos_disponibles-1 WHERE nombre_evento=arg_nombre_evento;
-    UPDATE abonos SET saldo=saldo-1 WHERE cliente=arg_NIF_cliente;
-   
-    SELECT asientos_disponibles INTO libres FROM eventos WHERE nombre_evento = arg_nombre_evento;
-    if trunc(arg_fecha) < trunc(CURRENT_DATE) then
-        rollback;
-        raise_application_error(-20001,'No se pueden reservar eventos pasados.');
-    else 
-        SELECT count(*) into eventos_existentes from eventos where nombre_evento = arg_nombre_evento; --existe
-        SELECT count(*) into clientes_existentes from clientes where arg_NIF_cliente = NIF; --existe cliente
-        SELECT asientos_disponibles INTO libres from eventos WHERE nombre_evento = arg_nombre_evento; --libres
-        SELECT saldo INTO dinero from abonos WHERE arg_NIF_cliente = cliente; --saldo
-        if eventos_existentes < 1 then
-            rollback;
-        elsif clientes_existentes < 1 then
-            rollback;
-            raise_application_error(-20002,'Cliente inexistente.');
-        elsif eventos_existentes < 1 then
-            rollback;
-            raise_application_error(-20003,'El evento ' ||arg_nombre_evento|| 'no existe.');
-        elsif dinero < 1 then
-            rollback;
-            raise_application_error(-20004,'Saldo en abono insuficiente.');
-        else
-	    -- Resto de la lógica para realizar la reserva
-            commit;
-        end if;
-    end if;
+    v_id_evento INTEGER;
+    v_saldo INTEGER;
+    v_asientos_disponibles INTEGER;
+    v_eventos_existentes INTEGER;
+    v_clientes_existentes INTEGER;
+    v_libres INTEGER;
+    v_dinero INTEGER;
 
-end;
+BEGIN
+    -- Primero, verificar si la fecha del evento es futura
+    IF TRUNC(arg_fecha) < TRUNC(SYSDATE) THEN
+        RAISE evento_pasado;
+    END IF;
+
+    -- Verificar si el evento existe y obtener su ID
+    SELECT id_evento, asientos_disponibles INTO v_id_evento, v_asientos_disponibles
+    FROM eventos
+    WHERE nombre_evento = arg_nombre_evento
+    AND fecha >= arg_fecha
+    AND ROWNUM = 1; -- Asegura obtener solo un registro
+    
+    -- Si el evento no tiene asientos disponibles, lanzar excepción
+    IF v_asientos_disponibles < 1 THEN
+        RAISE saldo_insuficiente;
+    END IF;
+
+    -- Verificar si el cliente existe y tiene un abono con saldo suficiente
+    SELECT saldo INTO v_saldo
+    FROM abonos
+    WHERE cliente = arg_NIF_cliente
+    AND saldo > 0
+    AND ROWNUM = 1; -- Asegura obtener solo un registro
+    
+    -- Si todo es correcto, realizar la reserva
+    INSERT INTO reservas (id_reserva, cliente, evento, fecha)
+    VALUES (seq_reservas.NEXTVAL, arg_NIF_cliente, v_id_evento, arg_fecha);
+
+    -- Actualizar el saldo del abono del cliente
+    UPDATE abonos SET saldo = saldo - 1
+    WHERE cliente = arg_NIF_cliente;
+
+    -- Disminuir los asientos disponibles del evento
+    UPDATE eventos SET asientos_disponibles = asientos_disponibles - 1
+    WHERE id_evento = v_id_evento;
+
+EXCEPTION
+    WHEN evento_pasado THEN
+        RAISE_APPLICATION_ERROR(-20001, 'No se pueden reservar eventos pasados.');
+    WHEN cliente_inexistente THEN
+        RAISE_APPLICATION_ERROR(-20002,'Cliente inexistente.');
+    WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20003, 'El evento ' ||arg_nombre_evento|| 'no existe.');
+    WHEN saldo_insuficiente THEN
+        RAISE_APPLICATION_ERROR(-20004, 'Saldo en abono insuficiente.');
+END;
 /
+
 
 
 ------ Deja aquí tus respuestas a las preguntas del enunciado:
@@ -166,33 +183,6 @@ end;
 
 exec inicializa_test;
 
-
-create or replace procedure inicializa_test is
-begin
-  reset_seq( 'seq_abonos' );
-  reset_seq( 'seq_eventos' );
-  reset_seq( 'seq_reservas' );
-        
-  
-    delete from reservas;
-    delete from eventos;
-    delete from abonos;
-    delete from clientes;
-    	
-    insert into clientes values ('12345678A', 'Pepe', 'Perez', 'Porras');
-    insert into clientes values ('11111111B', 'Beatriz', 'Barbosa', 'Bernardez');
-    
-    insert into abonos values (seq_abonos.nextval, '12345678A',10);
-    insert into abonos values (seq_abonos.nextval, '11111111B',0);
-    
-    insert into eventos values ( seq_eventos.nextval, 'concierto_la_moda', date '2024-6-27', 200);
-    insert into eventos values ( seq_eventos.nextval, 'teatro_impro', date '2024-7-1', 50);
-
-    commit;
-end;
-/
-
-exec inicializa_test;
 
 
 -- Completa el test 
@@ -289,4 +279,3 @@ end;
 
 set serveroutput on;
 exec test_reserva_evento;
-
