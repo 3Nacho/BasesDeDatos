@@ -123,9 +123,19 @@ END;
 -- directamente de las condiciones que verificamos antes en el paso 2, es decir, verificamos las condiciones
 -- antes de la reserva del paso 3 otra vez.
 
+
+
 -- * P4.2 En el paso 3, la ejecución concurrente del mismo procedimiento reservar_evento con, quizás
 --        otros o los mimos argumentos, ¿podría habernos añadido una reserva no recogida en esa SELECT
 --        que fuese incompatible con nuestra reserva?, ¿por qué?.
+
+
+-- La posible ejecución concurrente del procedimiento reservar_evento con, quizás otros o los 
+-- mismos argumentos podría resultar si añadimos una reserva no recogida en ese 'SELECT', que 
+-- fuese incompatible con nuestra reserva. Esto es conocido como condiciones de carrera en el 
+-- acceso y modificación de los datos en un entorno de bases de datos concurrentes.
+
+
 
 --
 -- * P4.3 ¿Qué estrategia de programación has utilizado?
@@ -133,11 +143,16 @@ END;
 -- Hemos utilizado una estrategia de programación defensiva. 
 -- Para ello creamos unas determinadas condiciones y a partir de ellas decidimos si hacer un commit o un rollback.
 
+
+
 -- * P4.4 ¿Cómo puede verse este hecho en tu código?
 
 -- Esto se puede ver a la hora de lanzar las excepciones en nuestro procedimiento donde tras hacer una consulta 
 -- y obtener el resultado, evaluamos el resultado y en caso
 -- de obtener algo erróneo hacemos un rollback y lanzamos la excepción correspondiente. 
+
+
+
 --
 -- * P4.5 ¿De qué otro modo crees que podrías resolver el problema propuesto? Incluye el pseudocódigo
 -- 
