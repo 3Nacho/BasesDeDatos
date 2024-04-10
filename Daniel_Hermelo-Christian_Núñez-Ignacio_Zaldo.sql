@@ -118,6 +118,7 @@ END;
 
 ------ Deja aquí tus respuestas a las preguntas del enunciado:
 -- * P4.1 El resultado de la comprobación del paso 2 ¿sigue siendo fiable en el paso 3?:
+
 -- Si, el resultado sigue siendo fiable en el paso 3, porque las acciones que realizamos en el paso 3 dependen
 -- directamente de las condiciones que verificamos antes en el paso 2, es decir, verificamos las condiciones
 -- antes de la reserva del paso 3 otra vez.
@@ -128,9 +129,15 @@ END;
 
 --
 -- * P4.3 ¿Qué estrategia de programación has utilizado?
---
+
+-- Hemos utilizado una estrategia de programación defensiva. 
+-- Para ello creamos unas determinadas condiciones y a partir de ellas decidimos si hacer un commit o un rollback.
+
 -- * P4.4 ¿Cómo puede verse este hecho en tu código?
 
+-- Esto se puede ver a la hora de lanzar las excepciones en nuestro procedimiento donde tras hacer una consulta 
+-- y obtener el resultado, evaluamos el resultado y en caso
+-- de obtener algo erróneo hacemos un rollback y lanzamos la excepción correspondiente. 
 --
 -- * P4.5 ¿De qué otro modo crees que podrías resolver el problema propuesto? Incluye el pseudocódigo
 -- 
