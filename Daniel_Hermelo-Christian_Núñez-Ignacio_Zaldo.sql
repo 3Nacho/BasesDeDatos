@@ -1,4 +1,4 @@
---Repositorio: https://github.com/3Nacho/BasesDeDatos
+-- Repositorio: https://github.com/3Nacho/BasesDeDatos
 -- Autores:
 -- Christian Núñez Duque
 -- Daniel Hermelo Puente
@@ -118,6 +118,15 @@ CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_
     commit;
 
 EXCEPTION
+<<<<<<< HEAD
+=======
+    WHEN evento_pasado THEN
+        RAISE_APPLICATION_ERROR(-20001, 'No se pueden reservar eventos pasados.');
+    WHEN cliente_inexistente THEN
+        RAISE_APPLICATION_ERROR(-20002,'Cliente inexistente.');
+    WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20003, 'El evento ' ||arg_nombre_evento|| ' no existe.');
+>>>>>>> fb358faad40ff791544e56810ebbed7ec5984f55
     WHEN saldo_insuficiente THEN
         RAISE_APPLICATION_ERROR(-20004, 'Saldo en abono insuficiente.');
 END;
@@ -270,7 +279,7 @@ begin
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLCODE = -20004 THEN
-        dbms_output.put_line('T5: Prueba exitosa: Saldo insuficiente en abono. SQL Error: ' || SQLCODE || ' ' || SQLERRM);
+        dbms_output.put_line('T5: Prueba exitosa: Saldo en abono insuficiente. SQL Error: ' || SQLCODE || ' ' || SQLERRM);
       ELSE
         dbms_output.put_line('T5: Error inesperado: ' || SQLERRM);
       END IF;
