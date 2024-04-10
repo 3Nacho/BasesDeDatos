@@ -71,30 +71,37 @@ CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_
     v_libres INTEGER;
     v_dinero INTEGER;
 
-BEGIN
+    BEGIN
     -- Primero, verificar si la fecha del evento es futura
-    IF TRUNC(arg_fecha) < TRUNC(SYSDATE) THEN
-        RAISE evento_pasado;
+    IF TRUNC(arg_fecha) < TRUNC(CURRENT_DATE) THEN
+        RAISE_APPLICATION_ERROR(-20001, 'No se pueden reservar eventos pasados.');   
     END IF;
 
-    -- Verificar si el evento existe y obtener su ID
-    SELECT id_evento, asientos_disponibles INTO v_id_evento, v_asientos_disponibles
-    FROM eventos
-    WHERE nombre_evento = arg_nombre_evento
-    AND fecha >= arg_fecha
-    AND ROWNUM = 1; -- Asegura obtener solo un registro
-    
+    DELETE from eventos where nombre_evento = arg_nombre_evento;
+    if sql%rowcount = 0 then
+        rollback;
+        RAISE_APPLICATION_ERROR(-20003, 'El evento ' ||arg_nombre_evento|| 'no existe.');
+    else
+        commit;
+    end if;
+
+    DELETE from clientes where NIF = arg_NIF_cliente;
+    if sql%rowcount = 0 then
+        rollback;
+        RAISE_APPLICATION_ERROR(-20002,'Cliente inexistente.');
+    else
+        commit;
+    end if;
+            
     -- Si el evento no tiene asientos disponibles, lanzar excepción
     IF v_asientos_disponibles < 1 THEN
         RAISE saldo_insuficiente;
     END IF;
 
-    -- Verificar si el cliente existe y tiene un abono con saldo suficiente
-    SELECT saldo INTO v_saldo
-    FROM abonos
-    WHERE cliente = arg_NIF_cliente
-    AND saldo > 0
-    AND ROWNUM = 1; -- Asegura obtener solo un registro
+    SELECT saldo INTO dinero from abonos WHERE arg_NIF_cliente = cliente;
+    if dinero < 1 then
+        rollback;
+        raise_application_error(-20004,'Saldo en abono insuficiente.');
     
     -- Si todo es correcto, realizar la reserva
     INSERT INTO reservas (id_reserva, cliente, evento, fecha)
@@ -107,14 +114,10 @@ BEGIN
     -- Disminuir los asientos disponibles del evento
     UPDATE eventos SET asientos_disponibles = asientos_disponibles - 1
     WHERE id_evento = v_id_evento;
+    
+    commit;
 
 EXCEPTION
-    WHEN evento_pasado THEN
-        RAISE_APPLICATION_ERROR(-20001, 'No se pueden reservar eventos pasados.');
-    WHEN cliente_inexistente THEN
-        RAISE_APPLICATION_ERROR(-20002,'Cliente inexistente.');
-    WHEN NO_DATA_FOUND THEN
-        RAISE_APPLICATION_ERROR(-20003, 'El evento ' ||arg_nombre_evento|| 'no existe.');
     WHEN saldo_insuficiente THEN
         RAISE_APPLICATION_ERROR(-20004, 'Saldo en abono insuficiente.');
 END;
