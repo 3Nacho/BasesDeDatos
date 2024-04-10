@@ -1,4 +1,4 @@
---Repositorio: https://github.com/3Nacho/BasesDeDatos
+-- Repositorio: https://github.com/3Nacho/BasesDeDatos
 -- Autores:
 -- Christian Núñez Duque
 -- Daniel Hermelo Puente
@@ -114,7 +114,7 @@ EXCEPTION
     WHEN cliente_inexistente THEN
         RAISE_APPLICATION_ERROR(-20002,'Cliente inexistente.');
     WHEN NO_DATA_FOUND THEN
-        RAISE_APPLICATION_ERROR(-20003, 'El evento ' ||arg_nombre_evento|| 'no existe.');
+        RAISE_APPLICATION_ERROR(-20003, 'El evento ' ||arg_nombre_evento|| ' no existe.');
     WHEN saldo_insuficiente THEN
         RAISE_APPLICATION_ERROR(-20004, 'Saldo en abono insuficiente.');
 END;
@@ -267,7 +267,7 @@ begin
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLCODE = -20004 THEN
-        dbms_output.put_line('T5: Prueba exitosa: Saldo insuficiente en abono. SQL Error: ' || SQLCODE || ' ' || SQLERRM);
+        dbms_output.put_line('T5: Prueba exitosa: Saldo en abono insuficiente. SQL Error: ' || SQLCODE || ' ' || SQLERRM);
       ELSE
         dbms_output.put_line('T5: Error inesperado: ' || SQLERRM);
       END IF;
