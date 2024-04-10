@@ -117,15 +117,22 @@ END;
 
 
 ------ Deja aquí tus respuestas a las preguntas del enunciado:
--- * P4.1
+-- * P4.1 El resultado de la comprobación del paso 2 ¿sigue siendo fiable en el paso 3?:
+-- Si, el resultado sigue siendo fiable en el paso 3, porque las acciones que realizamos en el paso 3 dependen
+-- directamente de las condiciones que verificamos antes en el paso 2, es decir, verificamos las condiciones
+-- antes de la reserva del paso 3 otra vez.
+
+-- * P4.2 En el paso 3, la ejecución concurrente del mismo procedimiento reservar_evento con, quizás
+--        otros o los mimos argumentos, ¿podría habernos añadido una reserva no recogida en esa SELECT
+--        que fuese incompatible con nuestra reserva?, ¿por qué?.
+
 --
--- * P4.2
+-- * P4.3 ¿Qué estrategia de programación has utilizado?
 --
--- * P4.3
+-- * P4.4 ¿Cómo puede verse este hecho en tu código?
+
 --
--- * P4.4
---
--- * P4.5
+-- * P4.5 ¿De qué otro modo crees que podrías resolver el problema propuesto? Incluye el pseudocódigo
 -- 
 
 
