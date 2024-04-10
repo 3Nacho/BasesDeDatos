@@ -69,11 +69,12 @@ CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_
     v_eventos_existentes INTEGER;
     v_clientes_existentes INTEGER;
     v_libres INTEGER;
-    v_dinero INTEGER;
+    dinero INTEGER;
 
     BEGIN
     -- Primero, verificar si la fecha del evento es futura
     IF TRUNC(arg_fecha) < TRUNC(CURRENT_DATE) THEN
+        rollback;
         RAISE_APPLICATION_ERROR(-20001, 'No se pueden reservar eventos pasados.');   
     END IF;
 
@@ -84,24 +85,12 @@ CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_
     else
         commit;
     end if;
-
-    DELETE from clientes where NIF = arg_NIF_cliente;
-    if sql%rowcount = 0 then
-        rollback;
-        RAISE_APPLICATION_ERROR(-20002,'Cliente inexistente.');
-    else
-        commit;
-    end if;
             
-    -- Si el evento no tiene asientos disponibles, lanzar excepción
-    IF v_asientos_disponibles < 1 THEN
-        RAISE saldo_insuficiente;
-    END IF;
-
     SELECT saldo INTO dinero from abonos WHERE arg_NIF_cliente = cliente;
     if dinero < 1 then
         rollback;
         raise_application_error(-20004,'Saldo en abono insuficiente.');
+    end if;
     
     -- Si todo es correcto, realizar la reserva
     INSERT INTO reservas (id_reserva, cliente, evento, fecha)
@@ -118,19 +107,12 @@ CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_
     commit;
 
 EXCEPTION
-<<<<<<< HEAD
-=======
-    WHEN evento_pasado THEN
-        RAISE_APPLICATION_ERROR(-20001, 'No se pueden reservar eventos pasados.');
-    WHEN cliente_inexistente THEN
-        RAISE_APPLICATION_ERROR(-20002,'Cliente inexistente.');
-    WHEN NO_DATA_FOUND THEN
-        RAISE_APPLICATION_ERROR(-20003, 'El evento ' ||arg_nombre_evento|| ' no existe.');
->>>>>>> fb358faad40ff791544e56810ebbed7ec5984f55
-    WHEN saldo_insuficiente THEN
-        RAISE_APPLICATION_ERROR(-20004, 'Saldo en abono insuficiente.');
+    WHEN no_data_found then
+        raise_application_error(-20002, 'Cliente inexistente');
+
 END;
 /
+
 
 
 
