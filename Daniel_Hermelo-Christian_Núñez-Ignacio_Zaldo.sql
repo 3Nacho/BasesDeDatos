@@ -62,10 +62,11 @@ CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_
     PRAGMA EXCEPTION_INIT(evento_inexistente, -20003);
     saldo_insuficiente EXCEPTION;
     PRAGMA EXCEPTION_INIT(saldo_insuficiente, -20004);
-    
+
     v_id_evento INTEGER;
     v_saldo INTEGER;
     v_libres INTEGER;
+    v_cliente VARCHAR(9);
     dinero INTEGER;
 
 
@@ -75,6 +76,13 @@ CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_
         rollback;
         RAISE_APPLICATION_ERROR(-20001, 'No se pueden reservar eventos pasados.');   
     END IF;
+
+    -- Se cuentan las filas en las que el NIF coincide
+    SELECT COUNT(*) into v_cliente from clientes where NIF = arg_NIF_cliente;
+    -- Si no hay coincidencias el cliente no existe
+    if v_cliente < 1 then
+        raise_application_error(-20002, 'Cliente inexistente');
+    end if;
 
     -- Comprobación de si existe un evento
     DELETE from eventos where nombre_evento = arg_nombre_evento;
@@ -107,10 +115,6 @@ CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_
     WHERE id_evento = v_id_evento;
     
     commit;
-
-EXCEPTION
-    WHEN no_data_found then
-        raise_application_error(-20002, 'Cliente inexistente');
 
 END;
 /
