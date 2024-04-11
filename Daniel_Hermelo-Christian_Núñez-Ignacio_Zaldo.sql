@@ -65,11 +65,9 @@ CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_
     
     v_id_evento INTEGER;
     v_saldo INTEGER;
-    v_asientos_disponibles INTEGER;
-    v_eventos_existentes INTEGER;
-    v_clientes_existentes INTEGER;
     v_libres INTEGER;
     dinero INTEGER;
+
 
     BEGIN
     -- Primero, verificar si la fecha del evento es futura
@@ -78,15 +76,19 @@ CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_
         RAISE_APPLICATION_ERROR(-20001, 'No se pueden reservar eventos pasados.');   
     END IF;
 
+    -- Comprobación de si existe un evento
     DELETE from eventos where nombre_evento = arg_nombre_evento;
+    -- Si el delete no afecta a ninguna fila no existe
     if sql%rowcount = 0 then
         rollback;
         RAISE_APPLICATION_ERROR(-20003, 'El evento ' ||arg_nombre_evento|| 'no existe.');
     else
         commit;
     end if;
-            
+           
+    -- Almacenar el saldo del cliente en un cursor        
     SELECT saldo INTO dinero from abonos WHERE arg_NIF_cliente = cliente;
+    -- Se comprueba el contenido del cursor para lanzar la excepcion si es necesario.
     if dinero < 1 then
         rollback;
         raise_application_error(-20004,'Saldo en abono insuficiente.');
