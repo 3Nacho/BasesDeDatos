@@ -91,11 +91,15 @@ BEGIN
     FROM eventos
     WHERE nombre_evento = arg_nombre_evento AND fecha = arg_fecha;
 
+    -- Si no se encuentra el evento solicitado, SQL%NOTFOUND será TRUE.
     IF SQL%NOTFOUND THEN
         rollback;
+        -- Lanzamos una excepción personalizada indicando que el evento no existe.
         RAISE_APPLICATION_ERROR(-20003, 'El evento ' || arg_nombre_evento || ' no existe.');
+    -- Si el evento existe pero no quedan asientos disponibles
     ELSIF v_asientos_disponibles < 1 THEN
         rollback;
+        -- Lanzamos una excepción personalizada indicando que no hay asientos disponibles.
         RAISE_APPLICATION_ERROR(-20005, 'No hay asientos disponibles para el evento.');
     END IF;
 
