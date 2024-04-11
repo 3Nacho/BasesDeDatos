@@ -62,15 +62,16 @@ CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_
     PRAGMA EXCEPTION_INIT(evento_inexistente, -20003);
     saldo_insuficiente EXCEPTION;
     PRAGMA EXCEPTION_INIT(saldo_insuficiente, -20004);
+    asientos_insuficientes EXCEPTION;
+    PRAGMA EXCEPTION_INIT(asientos_insuficientes, -20005);
 
     v_id_evento INTEGER;
     v_saldo INTEGER;
-    v_libres INTEGER;
+    v_asientos_disponibles INTEGER;
     v_cliente VARCHAR(9);
     dinero INTEGER;
 
-
-    BEGIN
+BEGIN
     -- Primero, verificar si la fecha del evento es futura
     IF TRUNC(arg_fecha) < TRUNC(CURRENT_DATE) THEN
         rollback;
@@ -78,48 +79,51 @@ CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_
     END IF;
 
     -- Se cuentan las filas en las que el NIF coincide
-    SELECT COUNT(*) into v_cliente from clientes where NIF = arg_NIF_cliente;
+    SELECT COUNT(*) INTO v_cliente FROM clientes WHERE NIF = arg_NIF_cliente;
     -- Si no hay coincidencias el cliente no existe
-    if v_cliente < 1 then
-        raise_application_error(-20002, 'Cliente inexistente');
-    end if;
+    IF v_cliente < 1 THEN
+        rollback;
+        RAISE_APPLICATION_ERROR(-20002, 'Cliente inexistente');
+    END IF;
 
-    -- Comprobación de si existe un evento
-    DELETE from eventos where nombre_evento = arg_nombre_evento;
-    -- Si el delete no afecta a ninguna fila no existe
-    if sql%rowcount = 0 then
+    -- Comprobación de si existe un evento y si hay asientos disponibles
+    SELECT id_evento, asientos_disponibles INTO v_id_evento, v_asientos_disponibles
+    FROM eventos
+    WHERE nombre_evento = arg_nombre_evento AND fecha = arg_fecha;
+
+    IF SQL%NOTFOUND THEN
         rollback;
-        RAISE_APPLICATION_ERROR(-20003, 'El evento ' ||arg_nombre_evento|| 'no existe.');
-    else
-        commit;
-    end if;
-           
-    -- Almacenar el saldo del cliente en un cursor        
-    SELECT saldo INTO dinero from abonos WHERE arg_NIF_cliente = cliente;
-    -- Se comprueba el contenido del cursor para lanzar la excepcion si es necesario.
-    if dinero < 1 then
+        RAISE_APPLICATION_ERROR(-20003, 'El evento ' || arg_nombre_evento || ' no existe.');
+    ELSIF v_asientos_disponibles < 1 THEN
         rollback;
-        raise_application_error(-20004,'Saldo en abono insuficiente.');
-    end if;
+        RAISE_APPLICATION_ERROR(-20005, 'No hay asientos disponibles para el evento.');
+    END IF;
+
+    -- Almacenar el saldo del cliente        
+    SELECT saldo INTO dinero FROM abonos WHERE cliente = arg_NIF_cliente;
+    -- Verificar saldo suficiente
+    IF dinero < 1 THEN
+        rollback;
+        RAISE_APPLICATION_ERROR(-20004, 'Saldo en abono insuficiente.');
+    END IF;
     
     -- Si todo es correcto, realizar la reserva
     INSERT INTO reservas (id_reserva, cliente, evento, fecha)
     VALUES (seq_reservas.NEXTVAL, arg_NIF_cliente, v_id_evento, arg_fecha);
 
     -- Actualizar el saldo del abono del cliente
-    UPDATE abonos SET saldo = saldo - 1
-    WHERE cliente = arg_NIF_cliente;
+    UPDATE abonos SET saldo = saldo - 1 WHERE cliente = arg_NIF_cliente;
 
     -- Disminuir los asientos disponibles del evento
-    UPDATE eventos SET asientos_disponibles = asientos_disponibles - 1
-    WHERE id_evento = v_id_evento;
+    UPDATE eventos SET asientos_disponibles = asientos_disponibles - 1 WHERE id_evento = v_id_evento;
+    COMMIT;
     
-    commit;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20003, 'El evento ' || arg_nombre_evento || ' no existe o el cliente no tiene abono.');
 
 END;
 /
-
-
 
 
 ------ Deja aquí tus respuestas a las preguntas del enunciado:
@@ -232,87 +236,72 @@ exec inicializa_test;
 
 -- Completa el test 
 create or replace procedure test_reserva_evento is
-
-  -- Variables para contar la operación
-    cont_antes_de_la_reserva INTEGER;
-    cont_despues_de_la_reserva INTEGER;
-
+  cont_antes_de_la_reserva INTEGER;
+  cont_despues_de_la_reserva INTEGER;
 begin
-      
-  --caso 1 Reserva correcta, se realiza
+  -- Caso 1: Reserva correcta, se realiza
   begin
     inicializa_test;
-    
-    
-    -- Conteo antes de la reserva
     SELECT COUNT(*) INTO cont_antes_de_la_reserva FROM reservas;
-    
-    -- Hacemos una reserva valida
     reservar_evento('12345678A', 'concierto_la_moda', TO_DATE('2024-06-27', 'YYYY-MM-DD'));
-    
-    -- Conteo después de la reserva
     SELECT COUNT(*) INTO cont_despues_de_la_reserva FROM reservas;
-    
-    -- Verificamos si la prueba es exitosa
     IF cont_despues_de_la_reserva = cont_antes_de_la_reserva + 1 THEN
       dbms_output.put_line('T1: Prueba exitosa: La reserva se realizó correctamente.');
     ELSE
       dbms_output.put_line('T1: Prueba fallida: La cantidad de reservas no aumentó como se esperaba.');
     END IF;
-    
   EXCEPTION
-  WHEN OTHERS THEN
-    dbms_output.put_line('T1: Error inesperado: ' || SQLERRM);
-    
+    WHEN OTHERS THEN
+      dbms_output.put_line('T1: Error inesperado: ' || SQLERRM);
   end;
-  
-  --caso 2 Evento pasado
+
+  -- Caso 2: Evento pasado
   begin
     inicializa_test;
     reservar_evento('12345678A', 'concierto_la_moda', TO_DATE('2023-01-01', 'YYYY-MM-DD'));
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLCODE = -20001 THEN
-        dbms_output.put_line('T2: Prueba exitosa: No se pueden reservar eventos pasados. SQL Error: ' || SQLCODE || ' ' || SQLERRM);
+        dbms_output.put_line('T2: Prueba exitosa: No se pueden reservar eventos pasados.');
       ELSE
         dbms_output.put_line('T2: Error inesperado: ' || SQLERRM);
       END IF;
   end;
-  
-  --caso 3 Evento inexistente
+
+  -- Caso 3: Evento inexistente
   begin
     inicializa_test;
     reservar_evento('12345678A', 'evento_fantasma', TO_DATE('2024-06-28', 'YYYY-MM-DD'));
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLCODE = -20003 THEN
-        dbms_output.put_line('T3: Prueba exitosa: El evento no existe. SQL Error: ' || SQLCODE || ' ' || SQLERRM);
+        dbms_output.put_line('T3: Prueba exitosa: El evento no existe.');
       ELSE
         dbms_output.put_line('T3: Error inesperado: ' || SQLERRM);
       END IF;
   end;
-  
-  --caso 4 Cliente inexistente
+
+  -- Caso 4: Cliente inexistente
   begin
     inicializa_test;
     reservar_evento('99999999X', 'concierto_la_moda', TO_DATE('2024-06-27', 'YYYY-MM-DD'));
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLCODE = -20002 THEN
-        dbms_output.put_line('T4: Prueba exitosa: Cliente inexistente. SQL Error: ' || SQLCODE || ' ' || SQLERRM);
+        dbms_output.put_line('T4: Prueba exitosa: Cliente inexistente.');
       ELSE
         dbms_output.put_line('T4: Error inesperado: ' || SQLERRM);
       END IF;
   end;
-  
-  --caso 5 El cliente no tiene saldo suficiente
+
+  -- Caso 5: El cliente no tiene saldo suficiente
   begin
     inicializa_test;
     reservar_evento('11111111B', 'concierto_la_moda', TO_DATE('2024-06-27', 'YYYY-MM-DD'));
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLCODE = -20004 THEN
-        dbms_output.put_line('T5: Prueba exitosa: Saldo en abono insuficiente. SQL Error: ' || SQLCODE || ' ' || SQLERRM);
+        dbms_output.put_line('T5: Prueba exitosa: Saldo en abono insuficiente.');
       ELSE
         dbms_output.put_line('T5: Error inesperado: ' || SQLERRM);
       END IF;
@@ -320,6 +309,8 @@ begin
 
 end;
 /
+
+
 
 
 set serveroutput on;
