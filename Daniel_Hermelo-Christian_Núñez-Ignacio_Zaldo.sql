@@ -7,7 +7,7 @@
 drop table clientes cascade constraints;
 drop table abonos   cascade constraints;
 drop table eventos  cascade constraints;
-drop table reservas	cascade constraints;
+drop table reservas cascade constraints;
 
 drop sequence seq_abonos;
 drop sequence seq_eventos;
@@ -17,41 +17,41 @@ drop sequence seq_reservas;
 -- Creación de tablas y secuencias
 
 create table clientes(
-	NIF	varchar(9) primary key,
-	nombre	varchar(20) not null,
-	ape1	varchar(20) not null,
-	ape2	varchar(20) not null
+  NIF varchar(9) primary key,
+  nombre  varchar(20) not null,
+  ape1  varchar(20) not null,
+  ape2  varchar(20) not null
 );
 
 
 create sequence seq_abonos;
 
 create table abonos(
-	id_abono	integer primary key,
-	cliente  	varchar(9) references clientes,
-	saldo	    integer not null check (saldo>=0)
+  id_abono  integer primary key,
+  cliente   varchar(9) references clientes,
+  saldo     integer not null check (saldo>=0)
     );
 
 create sequence seq_eventos;
 
 create table eventos(
-	id_evento	integer  primary key,
-	nombre_evento		varchar(20),
+  id_evento integer  primary key,
+  nombre_evento   varchar(20),
     fecha       date not null,
-	asientos_disponibles	integer  not null
+  asientos_disponibles  integer  not null
 );
 
 create sequence seq_reservas;
 
 -- Tabla de reservas
 create table reservas(
-	id_reserva	integer primary key,
-	cliente  	varchar(9) references clientes,
+  id_reserva  integer primary key,
+  cliente   varchar(9) references clientes,
     evento      integer references eventos,
-	abono       integer references abonos,
-	fecha	date not null
+  abono       integer references abonos,
+  fecha date not null
 );
-	
+  
 
 CREATE OR REPLACE PROCEDURE reservar_evento(arg_NIF_cliente VARCHAR, arg_nombre_evento VARCHAR, arg_fecha DATE) IS
     evento_pasado EXCEPTION;
@@ -158,6 +158,22 @@ END;
 --
 -- * P4.5 ¿De qué otro modo crees que podrías resolver el problema propuesto? Incluye el pseudocódigo
 -- 
+-- Otro modo de resolver el problema sería usar una estrategia ofensiva o agresiva en vez de la defensiva que hemos usado
+-- en el código que hemos realizado.
+
+-- El pseudocódigo sería:
+
+-- 1)  Buscar el evento y ver si la fecha del evento es más tarde de la fecha actual.
+-- 2)  En caso de no encontrar el evento o que ya haya pasado, lanzariamos la una excepción.
+-- 3)  Buscar al cliente y ver si tiene saldo suficiente.
+-- 4)  En caso de no encontrarlo o que no tenga sufieciente saldo, lanzariamos una excepción.
+-- 5)  Si es suficiente el saldo.
+-- 6)  Ver si hay asientos libres.
+-- 7)  Insertar la nueva reserva dentro de la tabla reservas.
+-- 8)  Actualizar el saldo del cliente y reducir el número de asientos que quedarían disponibles.
+-- 9)  Alguna excepción --> hacer rollback.
+-- 10) Todo correcto --> confirmar con commit.
+
 
 
 create or replace
@@ -192,7 +208,7 @@ begin
     delete from eventos;
     delete from abonos;
     delete from clientes;
-    	
+      
     insert into clientes values ('12345678A', 'Pepe', 'Perez', 'Porras');
     insert into clientes values ('11111111B', 'Beatriz', 'Barbosa', 'Bernardez');
     
